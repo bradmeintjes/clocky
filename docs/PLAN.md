@@ -35,7 +35,7 @@ This document is for review before any code is written. Items marked **Decision*
 | Routing | Hash routes (`#/project/abc`) | GitHub Pages has no SPA fallback, and hash routes avoid 404s on refresh. |
 | Zip for export | `fflate` | Small (about 8 KB) and fast. |
 | Tests | Vitest for logic, Playwright for a few end-to-end flows | Export maths and sync merge get the most unit tests. |
-| Hosting | GitHub Pages, deployed by a GitHub Actions workflow on every push to `main` | **Decision.** Pages is built into GitHub, needs no extra account, and serves at `https://bradmeintjes.github.io/clocky/`. |
+| Hosting | GitHub Pages, deployed by a GitHub Actions workflow on every push to `main` | **Decision.** Pages is built into GitHub, needs no extra account, and serves at `https://bradmeintjes.github.io/clocky/`. The repo will be public, which free Pages requires. Nothing secret goes in it: the Google OAuth client ID is public by design, and your data lives only in your browser and your Drive. |
 
 Dependencies stay few: `dexie`, `fflate`, `vite-plugin-pwa`, and dev tooling. Anything else needs a reason.
 
