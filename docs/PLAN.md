@@ -1,6 +1,6 @@
 # Clocky build plan
 
-Clocky is a small, personal time tracker that replaces Clockify. It does far less than Clockify on purpose: track time against a project and task, attach proof of work, and export a clean timesheet. Export is the main reason it exists, so it gets the most care.
+Clocky is a small, personal time tracker. It does little on purpose: track time against a project and task, attach proof of work, and export a clean timesheet. Export is the main reason it exists, so it gets the most care.
 
 This document is for review before any code is written. Items marked **Decision** are choices I made that you may want to change. Open questions are at the end.
 
