@@ -1,11 +1,15 @@
 <script lang="ts">
-  import Icon from './Icon.svelte'
-
   let { label = true }: { label?: boolean } = $props()
 </script>
 
 <span class="logo">
-  <span class="mark"><Icon name="clock" /></span>
+  <svg class="mark" viewBox="0 0 512 512" aria-hidden="true">
+    <rect width="512" height="512" rx="120" fill="#111111" />
+    <g transform="translate(256 256) scale(1.1) translate(-256 -256)">
+      <path d="M362 150a150 150 0 1 0 0 212" fill="none" stroke="#F2F0EB" stroke-width="56" stroke-linecap="round" />
+      <circle cx="256" cy="256" r="36" fill="#D9692B" />
+    </g>
+  </svg>
   {#if label}Clocky{/if}
 </span>
 
@@ -23,15 +27,6 @@
   .mark {
     width: 26px;
     height: 26px;
-    border-radius: 8px;
-    background: var(--ink);
-    color: var(--bg);
-    display: grid;
-    place-items: center;
-  }
-
-  .mark :global(svg) {
-    width: 16px;
-    height: 16px;
+    flex: none;
   }
 </style>

@@ -29,8 +29,10 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 
 ## Icons
 
-The app icons in `public/` are generated from `public/favicon.svg`:
+The app icon is a white "C" ring with a matte orange dot on black. The master is `docs/icon.svg`. `public/favicon.svg` is the rounded version for browser tabs, and `favicon.ico` is generated from it:
 
 ```sh
 npx @vite-pwa/assets-generator --preset minimal-2023 public/favicon.svg
 ```
+
+The PNG icons (`pwa-*.png`, `apple-touch-icon-180x180.png`) are rendered from `docs/icon.svg` at full bleed, since iOS and Android apply their own rounding. `maskable-icon-512x512.png` scales the glyph to 80% so it stays inside Android's safe zone. Any SVG-to-PNG tool works; render them after running the command above, which would otherwise overwrite them.
