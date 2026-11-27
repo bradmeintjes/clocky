@@ -29,7 +29,7 @@ This document is for review before any code is written. Items marked **Decision*
 | Area | Choice | Notes |
 |---|---|---|
 | App type | Installable PWA | Mobile first, responsive layout on desktop. |
-| UI | Svelte 5 + TypeScript | Plain CSS with custom properties, no UI kit. |
+| UI | Svelte 5 + TypeScript + Bits UI | Bits UI gives headless, accessible building blocks (combobox for tags, dialogs and sheets, popovers, date and time pickers). All styling is our own plain CSS with custom properties, no Tailwind. |
 | Build | Vite + `vite-plugin-pwa` | Service worker precaches the app shell, so it opens with no network. |
 | Local data | Dexie on IndexedDB | All reads and writes go to IndexedDB first. |
 | Routing | Hash routes (`#/project/abc`) | GitHub Pages has no SPA fallback, and hash routes avoid 404s on refresh. |
@@ -37,7 +37,7 @@ This document is for review before any code is written. Items marked **Decision*
 | Tests | Vitest for logic, Playwright for a few end-to-end flows | Export maths and sync merge get the most unit tests. |
 | Hosting | GitHub Pages, deployed by a GitHub Actions workflow on every push to `main` | **Decision.** Pages is built into GitHub, needs no extra account, and serves at `https://bradmeintjes.github.io/clocky/`. The repo will be public, which free Pages requires. Nothing secret goes in it: the Google OAuth client ID is public by design, and your data lives only in your browser and your Drive. |
 
-Dependencies stay few: `dexie`, `write-excel-file`, `vite-plugin-pwa`, and dev tooling. Anything else needs a reason.
+Dependencies stay few: `dexie`, `bits-ui`, `write-excel-file`, `vite-plugin-pwa`, and dev tooling. Anything else needs a reason.
 
 On first launch the app calls `navigator.storage.persist()` so the browser does not evict local data under storage pressure. Settings shows whether persistence was granted and how much space is used.
 
@@ -296,7 +296,8 @@ Export comes before sync because it is the main pain point, and it lets you star
 - **Nudge:** a setting, default 8 hours, measured from the latest start or resume.
 - **Sync:** status and Sync now live in Settings only.
 - **Google Cloud setup:** you will create the project and OAuth client from the README's steps.
+- **UI toolkit:** Bits UI (headless) styled with plain CSS.
 
 ## 9. Open questions
 
-1. **UI toolkit.** Plain CSS, Bits UI (headless, styled with our own CSS), or shadcn-svelte (Bits UI with Tailwind)? I recommend shadcn-svelte; options are in the PR thread.
+None. Ready to build once this PR is approved.
