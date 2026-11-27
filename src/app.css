@@ -51,6 +51,7 @@
   --r-m: 12px;
   --r-l: 18px;
   --tabs-h: 64px;
+  --statusbar-bg: #141821; /* iOS installed app, light theme: dark band behind white status text */
   --sidebar-w: 248px;
 }
 
@@ -74,6 +75,7 @@
     --danger: #f07a70;
     --danger-soft: #3a1715;
     --shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+    --statusbar-bg: transparent;
   }
 }
 

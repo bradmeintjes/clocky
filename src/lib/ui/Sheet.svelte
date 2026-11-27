@@ -44,7 +44,7 @@
     transform: translateX(-50%);
     width: 100%;
     max-width: 640px;
-    max-height: 92dvh;
+    max-height: calc(100dvh - env(safe-area-inset-top) - 12px);
     display: flex;
     flex-direction: column;
     background: var(--surface);
@@ -123,6 +123,7 @@
       max-width: 460px;
       max-height: none;
       height: 100dvh;
+      padding-top: env(safe-area-inset-top);
       border-radius: 0;
       animation: slide 0.2s ease-out;
     }
