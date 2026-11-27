@@ -21,6 +21,11 @@ export class ClockyDB extends Dexie {
       blobs: 'id',
       meta: 'key',
     })
+    // v2: drop the `end` index. IndexedDB leaves records with a null key out of an
+    // index, so it could never find the running timer (end === null).
+    this.version(2).stores({
+      entries: 'id, start, [projectId+start], updatedAt',
+    })
   }
 }
 

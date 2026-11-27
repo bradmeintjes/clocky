@@ -2,7 +2,12 @@
   import Icon, { type IconName } from './lib/Icon.svelte'
   import Logo from './lib/Logo.svelte'
   import { router } from './lib/router.svelte'
-  import { projects } from './lib/queries'
+  import EntryEditor from './lib/EntryEditor.svelte'
+  import { projects, running } from './lib/queries'
+  import StartSheet from './lib/StartSheet.svelte'
+  import TimerBar from './lib/TimerBar.svelte'
+  import Toast from './lib/Toast.svelte'
+  import { ui } from './lib/ui-state.svelte'
   import Project from './screens/Project.svelte'
   import Projects from './screens/Projects.svelte'
   import Export from './screens/Export.svelte'
@@ -13,6 +18,14 @@
     { name: 'export', label: 'Export', href: '#/export', icon: 'export' },
     { name: 'settings', label: 'Settings', href: '#/settings', icon: 'sliders' },
   ]
+
+  // Tick once a second while a timer runs, so clocks and totals stay live.
+  $effect(() => {
+    if (!$running) return
+    ui.now = Date.now()
+    const t = setInterval(() => (ui.now = Date.now()), 1000)
+    return () => clearInterval(t)
+  })
 
   const route = $derived(router.route)
   const active = $derived(route.name === 'project' ? 'projects' : route.name)
@@ -35,6 +48,7 @@
         {#each $projects.filter((p) => !p.archived) as p (p.id)}
           <a class="pitem" href="#/project/{p.id}" aria-current={openId === p.id ? 'page' : undefined}>
             <i style="--pc:{p.color}"></i>{p.name}
+            {#if $running?.projectId === p.id}<span class="livedot" title="Timer running"></span>{/if}
           </a>
         {/each}
       </div>
@@ -43,6 +57,7 @@
 
   <main class="main">
     <div class="inner">
+      <TimerBar />
       {#if route.name === 'project'}
         {#key route.id}<Project id={route.id} />{/key}
       {:else if active === 'projects'}
@@ -54,6 +69,10 @@
       {/if}
     </div>
   </main>
+
+  <StartSheet />
+  <EntryEditor />
+  <Toast />
 
   <nav class="tabs" aria-label="Main">
     {#each tabs as tab (tab.name)}
@@ -77,7 +96,7 @@
   .main {
     max-width: 720px;
     margin: 0 auto;
-    padding: 0 max(16px, env(safe-area-inset-right)) calc(var(--tabs-h) + 32px + env(safe-area-inset-bottom))
+    padding: 0 max(16px, env(safe-area-inset-right)) calc(var(--tabs-h) + 110px + env(safe-area-inset-bottom))
       max(16px, env(safe-area-inset-left));
   }
 
@@ -176,6 +195,14 @@
       background: var(--surface-2);
       color: var(--ink);
       font-weight: 600;
+    }
+
+    .livedot {
+      width: 7px;
+      height: 7px;
+      margin-left: auto;
+      border-radius: 50%;
+      background: var(--live);
     }
 
     .pitem i {
