@@ -44,3 +44,15 @@ export function addDays(t: number, days: number): number {
   d.setDate(d.getDate() + days)
   return d.getTime()
 }
+
+/** Running clock: 1:05:09. */
+export function formatHMS(ms: number): string {
+  const s = Math.floor(Math.max(0, ms) / 1000)
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** Short break length: "35 min", "1h 10m". */
+export function formatBreak(ms: number): string {
+  const m = Math.round(ms / MIN)
+  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m} min`
+}

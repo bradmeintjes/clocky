@@ -1,35 +1,54 @@
 <script lang="ts">
   import { liveQuery } from 'dexie'
+  import { pause, resume, stop } from '../lib/actions'
+  import { isPaused } from '../lib/data/entries'
+  import { dayLabel } from '../lib/dates'
   import { db } from '../lib/db'
+  import EntryRow from '../lib/EntryRow.svelte'
   import Icon from '../lib/Icon.svelte'
   import ProjectSheet from '../lib/ProjectSheet.svelte'
+  import { projectEntries, running, tags } from '../lib/queries'
   import { weekStartDay } from '../lib/settings'
-  import { formatHM, startOfMonth, startOfWeek, workedMs } from '../lib/time'
+  import { formatHM, formatHMS, startOfMonth, startOfWeek, workedMs } from '../lib/time'
+  import type { Entry } from '../lib/types'
   import Swatch from '../lib/ui/Swatch.svelte'
+  import { ui } from '../lib/ui-state.svelte'
+  import { dateKey } from '../lib/zone'
 
   let { id }: { id: string } = $props()
 
-  const project = $derived(liveQuery(() => db.projects.get(id)))
-  const entries = $derived(
-    liveQuery(() =>
-      db.entries
-        .where('[projectId+start]')
-        .between([id, -Infinity], [id, Infinity])
-        .filter((e) => !e.deleted)
-        .toArray(),
-    ),
-  )
+  // The screen is keyed on id by the router, so these are created once per project.
+  // svelte-ignore state_referenced_locally
+  const project = liveQuery(() => db.projects.get(id))
+  // svelte-ignore state_referenced_locally
+  const entries = projectEntries(id)
 
   let editing = $state(false)
 
-  const now = Date.now()
-  const weekFrom = startOfWeek(now, weekStartDay())
-  const monthFrom = startOfMonth(now)
-  const monthName = new Date(now).toLocaleDateString(undefined, { month: 'long' })
+  const monthName = new Date().toLocaleDateString(undefined, { month: 'long' })
 
   const list = $derived($entries ?? [])
-  const sum = (from: number) => list.filter((e) => e.start >= from).reduce((s, e) => s + workedMs(e, now), 0)
+  const tagsById = $derived(new Map(($tags ?? []).map((t) => [t.id, t])))
   const p = $derived($project && !$project.deleted ? $project : undefined)
+  const run = $derived($running && $running.projectId === id ? $running : undefined)
+  const paused = $derived(run ? isPaused(run) : false)
+
+  const sum = (from: number) => list.filter((e) => e.start >= from).reduce((s, e) => s + workedMs(e, ui.now), 0)
+  const week = $derived(sum(startOfWeek(ui.now, weekStartDay())))
+  const month = $derived(sum(startOfMonth(ui.now)))
+
+  // Group by the local date of each entry's start, in its own zone. List is newest first.
+  const groups = $derived.by(() => {
+    const out: { key: string; items: Entry[]; total: number }[] = []
+    for (const e of list) {
+      const key = dateKey(e.start, e.tz)
+      let g = out[out.length - 1]
+      if (!g || g.key !== key) out.push((g = { key, items: [], total: 0 }))
+      g.items.push(e)
+      g.total += workedMs(e, ui.now)
+    }
+    return out
+  })
 </script>
 
 <div class="topbar">
@@ -46,8 +65,8 @@
       <button class="iconbtn" aria-label="Edit project" onclick={() => (editing = true)}><Icon name="edit" /></button>
     </div>
     <div class="stats">
-      <div class="stat"><b>{formatHM(sum(weekFrom))}</b><span>This week</span></div>
-      <div class="stat"><b>{formatHM(sum(monthFrom))}</b><span>{monthName}</span></div>
+      <div class="stat"><b>{formatHM(week)}</b><span>This week</span></div>
+      <div class="stat"><b>{formatHM(month)}</b><span>{monthName}</span></div>
       <div class="stat"><b>{list.length}</b><span>Entries</span></div>
     </div>
     {#if p.archived}
@@ -55,19 +74,48 @@
         <Icon name="archive" />
         <span>This project is archived. Its time still shows up in exports for the periods it covers.</span>
       </div>
+    {:else if run}
+      <div class="runbox" class:paused>
+        <div class="grow">
+          <div class="small state">{paused ? 'On break' : 'Running'} · {run.task || 'No task'}</div>
+          <div class="mono clock">{formatHMS(workedMs(run, ui.now))}</div>
+        </div>
+        {#if paused}
+          <button class="rbtn" aria-label="Resume" onclick={resume}><Icon name="play" /></button>
+        {:else}
+          <button class="rbtn" aria-label="Pause for a break" onclick={pause}><Icon name="pause" /></button>
+        {/if}
+        <button class="rbtn stop" aria-label="Stop timer" onclick={stop}><Icon name="stop" /></button>
+      </div>
     {:else}
-      <button class="btn primary big block" disabled title="Timers arrive in the next milestone">
-        <Icon name="play" /> Start timer
-      </button>
+      <button class="btn primary big block" onclick={() => ui.openStart(p.id)}><Icon name="play" /> Start timer</button>
     {/if}
   </div>
 
-  <div class="section">
-    <div class="empty">
-      <h2>No time yet</h2>
-      <p class="muted">Timers and entries arrive in the next milestone.</p>
+  {#each groups as g (g.key)}
+    <div class="dsep">
+      <b>{dayLabel(g.key, ui.now)}</b>
+      <span class="mono">{formatHM(g.total)}</span>
     </div>
-  </div>
+    <div class="elist">
+      {#each g.items as e (e.id)}
+        <EntryRow entry={e} {tagsById} />
+      {/each}
+    </div>
+  {:else}
+    {#if $entries}
+      <div class="section">
+        <div class="empty">
+          <h2>No time yet</h2>
+          <p class="muted">Start a timer, or add time you already worked with the + button.</p>
+        </div>
+      </div>
+    {/if}
+  {/each}
+
+  <button class="fab" class:lifted={!!$running} aria-label="Add time by hand" title="Add time by hand" onclick={() => ui.newEntry(p.id)}>
+    <Icon name="plus" />
+  </button>
 
   <ProjectSheet bind:open={editing} project={p} />
 {:else if $project !== undefined || $entries}
@@ -143,7 +191,120 @@
     letter-spacing: 0.06em;
   }
 
+  .runbox {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--live-soft);
+  }
+
+  .runbox.paused {
+    background: var(--pause-soft);
+  }
+
+  .runbox .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .state {
+    font-weight: 600;
+    color: var(--live);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .paused .state {
+    color: var(--pause);
+  }
+
+  .clock {
+    font-size: 1.6rem;
+    font-weight: 700;
+  }
+
+  .rbtn {
+    width: 42px;
+    height: 42px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--ink);
+  }
+
+  .rbtn.stop {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  .dsep {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 18px 4px 6px;
+    background: var(--bg);
+  }
+
+  .dsep b {
+    font-family: var(--f-display);
+    font-size: 1rem;
+  }
+
+  .dsep .mono {
+    font-size: 0.875rem;
+    color: var(--ink-2);
+  }
+
+  .elist {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-m);
+  }
+
   .empty p {
     margin: 0;
+  }
+
+  .fab {
+    position: fixed;
+    z-index: 18;
+    right: max(18px, calc(env(safe-area-inset-right) + 18px));
+    bottom: calc(var(--tabs-h) + 18px + env(safe-area-inset-bottom));
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: var(--shadow);
+  }
+
+  .fab.lifted {
+    bottom: calc(var(--tabs-h) + 92px + env(safe-area-inset-bottom));
+  }
+
+  .fab :global(svg) {
+    width: 26px;
+    height: 26px;
+  }
+
+  @media (min-width: 960px) {
+    .fab,
+    .fab.lifted {
+      bottom: 32px;
+      right: 40px;
+    }
   }
 </style>

@@ -14,6 +14,9 @@
     edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
     archive: '<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10h14V9M10 13h4"/>',
     trash: '<path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/>',
+    pause: '<rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2.5"/>',
+    coffee: '<path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16"/>',
     play: '<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>',
   }
   export type IconName = keyof typeof paths
@@ -21,6 +24,14 @@
 
 <script lang="ts">
   let { name }: { name: IconName } = $props()
+  const filled = new Set<IconName>(['play', 'pause', 'stop'])
 </script>
 
-<svg class="i" viewBox="0 0 24 24" aria-hidden="true">{@html paths[name]}</svg>
+<svg class="i" class:fill={filled.has(name)} viewBox="0 0 24 24" aria-hidden="true">{@html paths[name]}</svg>
+
+<style>
+  .fill {
+    fill: currentColor;
+    stroke: none;
+  }
+</style>
