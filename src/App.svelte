@@ -32,6 +32,10 @@
   const openId = $derived(route.name === 'project' ? route.id : null)
 </script>
 
+<!-- iOS draws the status bar text in white over the app (black-translucent), so on the
+     light theme the area behind it gets a dark band to keep the clock readable. -->
+<div class="statusbar" aria-hidden="true"></div>
+
 <div class="app">
   <aside class="side">
     <div class="side-logo"><Logo /></div>
@@ -88,6 +92,19 @@
     min-height: 100dvh;
   }
 
+  .statusbar {
+    display: none;
+  }
+
+  :global(html.ios-standalone) .statusbar {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 50;
+    height: env(safe-area-inset-top);
+    background: var(--statusbar-bg, transparent);
+  }
+
   .side {
     display: none;
   }
@@ -96,8 +113,8 @@
   .main {
     max-width: 720px;
     margin: 0 auto;
-    padding: 0 max(16px, env(safe-area-inset-right)) calc(var(--tabs-h) + 110px + env(safe-area-inset-bottom))
-      max(16px, env(safe-area-inset-left));
+    padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right))
+      calc(var(--tabs-h) + 110px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
   }
 
   .tabs {
@@ -142,7 +159,8 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      padding: 20px 14px;
+      padding: calc(20px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
       background: var(--surface);
       border-right: 1px solid var(--line);
     }
@@ -220,7 +238,7 @@
     .main {
       max-width: none;
       width: 100%;
-      padding: 0 32px 48px;
+      padding: env(safe-area-inset-top) max(32px, env(safe-area-inset-right)) 48px 32px;
     }
 
     .inner {
