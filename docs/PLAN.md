@@ -33,11 +33,11 @@ This document is for review before any code is written. Items marked **Decision*
 | Build | Vite + `vite-plugin-pwa` | Service worker precaches the app shell, so it opens with no network. |
 | Local data | Dexie on IndexedDB | All reads and writes go to IndexedDB first. |
 | Routing | Hash routes (`#/project/abc`) | GitHub Pages has no SPA fallback, and hash routes avoid 404s on refresh. |
-| Zip for export | `fflate` | Small (about 8 KB) and fast. |
+| Excel export | `write-excel-file` | Small, writes real `.xlsx` with several sheets and number formats. Loaded only when you export, so it never slows the app's start. |
 | Tests | Vitest for logic, Playwright for a few end-to-end flows | Export maths and sync merge get the most unit tests. |
 | Hosting | GitHub Pages, deployed by a GitHub Actions workflow on every push to `main` | **Decision.** Pages is built into GitHub, needs no extra account, and serves at `https://bradmeintjes.github.io/clocky/`. The repo will be public, which free Pages requires. Nothing secret goes in it: the Google OAuth client ID is public by design, and your data lives only in your browser and your Drive. |
 
-Dependencies stay few: `dexie`, `fflate`, `vite-plugin-pwa`, and dev tooling. Anything else needs a reason.
+Dependencies stay few: `dexie`, `write-excel-file`, `vite-plugin-pwa`, and dev tooling. Anything else needs a reason.
 
 On first launch the app calls `navigator.storage.persist()` so the browser does not evict local data under storage pressure. Settings shows whether persistence was granted and how much space is used.
 
@@ -121,11 +121,14 @@ The file bytes live in a separate local-only table, `blobs` (keyed by attachment
 
 `entries` is indexed on `start`, `[projectId+start]` and `end` (to find the running timer fast). That covers the project screen, the export range query and the timer bar.
 
+There is no separate `projectId` index because the compound `[projectId+start]` index already answers "all entries for this project" (Dexie can query a compound index by its first part), and it returns them already sorted by start time, which is what the project screen needs. A second index would only cost storage and write time.
+
 ### Keeping storage compact
 
 - Timestamps are integers, ids are 26-character strings, booleans are omitted when false.
 - Synced files are gzipped with the browser's built-in `CompressionStream`.
-- Once an attachment is safely on Drive, its local bytes can be dropped (see open questions). The thumbnail stays, and the full file downloads again on demand.
+- Attachment bytes on entries older than a set period (a setting, default 3 months) are dropped from the device, but only once they are safely on Drive. The thumbnail and the record stay, and the full file downloads again when you open it.
+- Photos are kept at their original resolution.
 - Tombstones older than 90 days are purged after a successful sync.
 
 ## 4. Sign-in and sync
@@ -152,7 +155,7 @@ Splitting entries by month keeps each sync small: a normal day only touches the 
 
 ### Sync algorithm
 
-Sync runs on app start, after changes (debounced by about 10 seconds), when the device comes back online, and from a "Sync now" button.
+Sync runs on app start, after changes (debounced by about 10 seconds), when the device comes back online, and from a **Sync now** button in Settings.
 
 1. **Pull.** List files in `appDataFolder` with their `modifiedTime`. For each file that changed since the last sync, download it and merge each record into IndexedDB: the copy with the higher `updatedAt` wins. Tombstones merge the same way.
 2. **Push.** Group dirty records by the file they belong in. For each such file, merge with the remote copy just pulled, upload the result, then clear `dirty` on the records that were sent.
@@ -160,7 +163,7 @@ Sync runs on app start, after changes (debounced by about 10 seconds), when the 
 
 With one device, merges never actually conflict. The per-record `updatedAt` and tombstones are what make a second device safe later: the same merge rule already handles two writers, and moving to a hybrid logical clock would only be needed if device clocks drift badly.
 
-The sync status (last synced time, pending changes, uploads in progress, errors) shows in Settings and as a small dot in the header.
+Sync stays out of the main views. Its status (last synced time, pending changes, uploads in progress, errors) and the **Sync now** button live in Settings. The only time sync shows elsewhere is the "Sign in again to sync" banner, when Google needs you to confirm.
 
 ### Backup
 
@@ -207,9 +210,11 @@ When you stop a timer, the entry editor opens straight onto the description and 
 
 ### Long-running timer nudge
 
-When a timer has run for 8 hours, a banner offers "Still working?" with **Keep going**, **Stop now** and **Stop at…** (pick the real end time). A system notification is shown too, if you allow notifications.
+The nudge is measured from the **latest start or resume**, not from when the entry began. So a day with a lunch break only nudges after the threshold of unbroken work since lunch. The threshold is a setting, default 8 hours.
 
-Limitation: a web app with no server cannot wake itself up, so the notification only fires if the app is open or in the background on that device. If the app was closed, the banner appears the next time you open it.
+- **When you come back to the app** (open it, switch back to it, or open the running entry) and the threshold has passed, Clocky asks "Still working?" with an end time field, prefilled with the last start or resume time plus the threshold. You can set the real end time and stop, or dismiss the prompt and keep going, so working longer than 8 hours is still possible. Dismissing it keeps it quiet until the next start or resume.
+- **While the app is open or in the background**, a system notification is shown too, if you allow notifications. A web app with no server can't wake itself up when closed, which is why the prompt on return is the main mechanism.
+- Setting the end time from the prompt counts as a timestamp edit, so the entry is flagged manual.
 
 ### Export
 
@@ -219,52 +224,52 @@ Described in section 6.
 
 - Projects: create, rename, change color, archive or unarchive.
 - Tags: rename, merge two tags, delete.
-- Account and sync status, Sign out.
-- Storage: space used, persistence status, and the attachment storage option.
+- Account, sync status, **Sync now**, Sign out.
+- Preferences: week start (default Monday) and the nudge threshold (default 8 hours).
+- Storage: space used, persistence status, and how long attachments stay on the device (default 3 months).
 - Backup and restore.
 
 ## 6. Export
 
-The export tab has a period picker (This month by default, plus Last month, This week, Last week and Custom range), a project filter (all by default), a "Group by tag" switch, a preview of the totals table, and a **Download** button.
+The export tab has a period picker (This month by default, plus Last month, This week, Last week and Custom range), a project filter (all by default), a "Group by tag" switch, a preview of the totals table, and two buttons: **Download CSV** and **Download Excel**. Each produces a single file named for the period, for example `clocky-2026-11.csv` or `clocky-2026-11.xlsx`.
 
-### Decision: how to deliver several "sheets" as CSV
+### CSV: entries only
 
-CSV cannot hold several sheets, so I propose **one zip containing three CSV files**, named for the period, for example `clocky-2026-11.zip`:
+One row per entry, the detail behind the totals:
 
-1. **`timesheet.csv`** — totals per project per day. One row per day in the period, one column per project, a **Day total** column at the end (the daily subtotals), and a **Total** row at the bottom (project totals and the period total). Days with no time are included as empty rows, so the sheet reads like a calendar.
+```csv
+Date,Project,Task,Description,Tags,Start,End,Breaks,Worked,Manual,Links,Attachments
+2026-11-03,Website,Header redesign,"Reworked nav, fixed mobile menu",design; frontend,09:02,12:47,0:15,3:30,No,https://...,2
+```
 
-   ```csv
-   Date,Website,Mobile app,Day total
-   2026-11-03,3.50,1.25,4.75
-   2026-11-04,,6.00,6.00
-   ...
-   Total,42.25,61.00,103.25
-   ```
+### Excel: totals and entries
 
-2. **`by-tag.csv`** — included only when "Group by tag" is on. Same layout as the timesheet, with one column per tag plus an **Untagged** column. An entry with two tags counts under both, so the tag columns can add up to more than the day total. The file notes this in a header row.
+One `.xlsx` workbook with these sheets:
 
-3. **`entries.csv`** — one row per entry, for the detail behind the totals:
+1. **Timesheet** — totals per project per day. One row per day in the period, one column per project, a **Day total** column at the end (the daily subtotals), and a **Total** row at the bottom (project totals and the period total). Days with no time are included as empty rows, so the sheet reads like a calendar.
 
-   ```csv
-   Date,Project,Task,Description,Tags,Start,End,Breaks (min),Worked (h),Manual,Links,Attachments
-   2026-11-03,Website,Header redesign,"Reworked nav, fixed mobile menu",design; frontend,09:02,12:47,15,3.50,No,https://...,2
-   ```
+   | Date | Website | Mobile app | Day total |
+   |---|---|---|---|
+   | 2026-11-03 | 3:30 | 1:15 | 4:45 |
+   | 2026-11-04 | | 6:00 | 6:00 |
+   | … | | | |
+   | **Total** | **42:15** | **61:00** | **103:15** |
 
-Alternatives if you prefer:
+2. **By tag** — included only when "Group by tag" is on. Same layout, with one column per tag plus an **Untagged** column. An entry with two tags counts under both, so tag columns can add up to more than the day total; a note at the top of the sheet says so.
 
-- **Three separate CSV downloads** (no zip). Simpler to open on a phone, but the browser may ask about multiple downloads.
-- **One CSV with sections** separated by blank lines and section titles. One file, opens fine in Excel and Google Sheets, but it is harder to process with other tools.
+3. **Entries** — the same rows as the CSV.
+
+Durations are real Excel time values formatted as `[h]:mm`, so they show as hours and minutes and still add up correctly if you sum them yourself. Totals are written as values, not formulas.
 
 ### Formatting rules
 
-- Hours as decimals with two places (`3.50`). See open questions if you would rather have `3:30`.
+- Durations in hours and minutes (`3:30`), with no rounding: exact minutes.
 - Dates as `YYYY-MM-DD`, times as 24-hour `HH:MM` in the entry's own time zone.
-- UTF-8 with a byte order mark, so Excel shows accents correctly.
-- Proper CSV quoting. Cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet never runs them as formulas.
+- CSV is UTF-8 with a byte order mark, so Excel shows accents correctly, and uses proper quoting. Cells starting with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet never runs them as formulas.
 - A running timer is excluded from the export, and the screen says so.
 - Archived projects still appear if they have time in the period.
 
-The totals logic is pure TypeScript with thorough unit tests, including breaks, midnight crossing, time zone changes and empty periods.
+The totals logic is pure TypeScript with thorough unit tests, including breaks, midnight crossing, time zone changes and empty periods. CSV and Excel share it, so they always agree.
 
 ## 7. Milestones
 
@@ -275,20 +280,23 @@ Each milestone ends with a pull request you can review, and the app deployed to 
 | M0 | Scaffold | Open an empty, installable Clocky at the Pages URL. CI runs type checks, unit tests and a build on every PR. |
 | M1 | Projects and tags | Create, color and archive projects; manage tags. Data persists locally. |
 | M2 | Timer and entries | Start, pause, resume and stop a timer; see entries under date separators; add and edit manual entries with the manual flag. |
-| M3 | Export | Download the timesheet zip for any period. The app is useful for real work from here, local only. |
+| M3 | Export | Download the entries CSV or the Excel timesheet for any period. The app is useful for real work from here, local only. |
 | M4 | Attachments | Add links, files and photos to entries, stored locally. |
 | M5 | Google sign-in and sync | Sign in with Google; data and attachments sync to Drive; backup and restore. |
-| M6 | Polish | 8-hour nudge and notification, storage settings, offline and install checks, accessibility pass. |
+| M6 | Polish | Long-running timer nudge and notification, storage settings, offline and install checks, accessibility pass. |
 
 Export comes before sync because it is the main pain point, and it lets you start using Clocky locally while sync is being built. Sign-in arrives in M5, so until then the app opens without a login.
 
-## 8. Open questions
+## 8. Decisions from review
 
-1. **Export format (Decision above).** Zip of three CSVs, three separate downloads, or one sectioned CSV?
-2. **Hours format.** Decimal hours (`3.50`) or hours and minutes (`3:30`)? Decimal is easier to sum; `3:30` is easier to read. I can also include both.
-3. **Rounding.** Exact minutes, or round each entry (for example to the nearest 6 or 15 minutes)? I assume no rounding.
-4. **Attachment storage.** Once a file is on Drive, should Clocky drop the local copy to save space (keeping a thumbnail and downloading on demand), or keep everything on the device? I suggest dropping local copies of files over 5 MB after upload.
-5. **Photo size.** Keep photos at full resolution as proof, or shrink them to about 2000 px on the long edge to save space? I assume full resolution.
-6. **Week start.** Monday or Sunday for "This week"? I assume Monday.
-7. **Nudge threshold.** Fixed at 8 hours, or a setting? I plan a setting that defaults to 8 hours.
-8. **Google Cloud setup.** Are you happy to create the Google Cloud project and OAuth client yourself with my step-by-step guide? This is the one step I cannot do for you.
+- **Export:** CSV holds entries only; Excel holds the timesheet, daily subtotals, optional tag sheet and entries. No zips.
+- **Durations:** hours and minutes, no rounding.
+- **Attachments:** dropped from the device for entries older than a set period (default 3 months), once on Drive. Photos stay at original resolution.
+- **Week start:** Monday by default, changeable in Settings.
+- **Nudge:** a setting, default 8 hours, measured from the latest start or resume.
+- **Sync:** status and Sync now live in Settings only.
+- **Google Cloud setup:** you will create the project and OAuth client from the README's steps.
+
+## 9. Open questions
+
+1. **UI toolkit.** Plain CSS, Bits UI (headless, styled with our own CSS), or shadcn-svelte (Bits UI with Tailwind)? I recommend shadcn-svelte; options are in the PR thread.
