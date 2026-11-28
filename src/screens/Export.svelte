@@ -181,7 +181,7 @@
         </thead>
         <tbody>
           {#each grid.days as d (d.date)}
-            <tr class:emptyday={d.total === 0}>
+            <tr>
               <th class="day">{dayName(d.date)}</th>
               {#each d.cells as v, i (i)}
                 <td>{v ? formatHM(v) : ''}</td>
@@ -359,10 +359,6 @@
 
   .tot {
     font-weight: 600;
-  }
-
-  tr.emptyday {
-    color: var(--ink-3);
   }
 
   tfoot th,

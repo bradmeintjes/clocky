@@ -64,7 +64,7 @@ describe('timesheet', () => {
   it('totals by project and day, without rounding', () => {
     const g = ts.byProject
     expect(g.columns.map((c) => c.name)).toEqual(['Mobile app', 'Old site', 'Website'])
-    expect(g.days).toHaveLength(30)
+    expect(g.days.map((d) => d.date)).toEqual(['2026-11-03', '2026-11-04', '2026-11-05']) // days with time only
     const d3 = g.days.find((d) => d.date === '2026-11-03')!
     expect(d3.cells).toEqual([75 * MIN, 0, 3 * HOUR + 30 * MIN])
     expect(d3.total).toBe(4 * HOUR + 45 * MIN)
@@ -90,7 +90,7 @@ describe('timesheet', () => {
   it('handles an empty period', () => {
     const empty = buildTimesheet({ period: periodFor('custom', { from: '2026-12-01', to: '2026-12-03' }), entries, projects, tags })
     expect(empty.rows).toEqual([])
-    expect(empty.byProject.days).toHaveLength(3)
+    expect(empty.byProject.days).toHaveLength(0)
     expect(empty.byProject.total).toBe(0)
   })
 
@@ -134,12 +134,11 @@ describe('xlsx sheets', () => {
     expect(workbookSheets(ts, { byTag: true }).map((s) => s.sheet)).toEqual(['Timesheet', 'By tag', 'Entries'])
   })
 
-  it('writes durations as [h]:mm time values and empty days as blank rows', () => {
+  it('writes durations as [h]:mm time values and leaves out days without time', () => {
     const data = workbookSheets(ts, { byTag: false })[0].data
-    expect(data).toHaveLength(4) // header, 2 days, total
+    expect(data).toHaveLength(3) // header, 1 day with time, total
     const day = data[1]
     expect(day[1]).toMatchObject({ value: 3.5 / 24, format: '[h]:mm' })
-    expect(data[2][1]).toBeNull()
-    expect(data[3][0]).toMatchObject({ value: 'Total' })
+    expect(data[2][0]).toMatchObject({ value: 'Total' })
   })
 })
