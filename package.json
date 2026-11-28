@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "bits-ui": "^2.22.0",
-    "dexie": "^4.4.7"
+    "dexie": "^4.4.7",
+    "write-excel-file": "^4.1.1"
   },
   "engines": {
     "node": ">=22"
