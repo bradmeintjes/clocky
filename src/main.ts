@@ -14,10 +14,11 @@ registerSW({ immediate: true })
 if ((navigator as Navigator & { standalone?: boolean }).standalone) document.documentElement.classList.add('ios-standalone')
 void requestPersistence()
 
-// System bar colour follows the app's light/dark background.
+// System bar colour: the dark background in dark mode, the dark status band in light
+// mode (as on iOS). Never light, so a bar the browser won't recolour can't show white.
 const dark = matchMedia('(prefers-color-scheme: dark)')
 const syncThemeColor = () =>
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark.matches ? '#0b112a' : '#f8fafc')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark.matches ? '#0b112a' : '#1e293b')
 syncThemeColor()
 dark.addEventListener('change', syncThemeColor)
 

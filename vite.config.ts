@@ -22,8 +22,10 @@ export default defineConfig({
         start_url: base,
         scope: base,
         display: 'standalone',
-        background_color: '#f8fafc',
-        theme_color: '#f8fafc',
+        // Dark in both themes: an installed Android app takes its system bar and splash
+        // colours from here and may ignore the theme-color meta tag (see src/main.ts).
+        background_color: '#0b112a',
+        theme_color: '#0b112a',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
