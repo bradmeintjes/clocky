@@ -29,15 +29,15 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 
 ## Google Drive sync
 
-Sign-in is optional: without it Clocky runs local-only. Signing in uses Google Identity Services in the browser (no server) with the `drive.appdata` scope, so Clocky only sees its own hidden folder in your Drive. The OAuth client ID is in `src/lib/sync/auth.ts`; it is public by design.
+Sign-in is optional: without it Clocky runs local-only. Signing in is a full-page OAuth redirect to Google and back (implicit token flow, no server; a pop-up can't return the token to an installed Android app) with the `drive.appdata` scope, so Clocky only sees its own hidden folder in your Drive. The OAuth client ID is in `src/lib/sync/auth.ts`; it is public by design.
 
 One-time Google Cloud setup (already done for this deployment):
 
 1. Create a project at console.cloud.google.com and enable the **Google Drive API**.
 2. OAuth consent screen: External, Testing mode, add yourself as a test user. Scopes: `.../auth/drive.appdata` and `.../auth/userinfo.email`.
-3. Credentials, Create OAuth client ID, type **Web application**. Authorised JavaScript origins: `https://bradmeintjes.github.io` and `http://localhost:5173`. No redirect URIs are needed.
+3. Credentials, Create OAuth client ID, type **Web application**. Authorised JavaScript origins: `https://bradmeintjes.github.io` and `http://localhost:5173`. Authorised redirect URIs: `https://bradmeintjes.github.io/clocky/` and `http://localhost:5173/clocky/` (the app's own URL, with the trailing slash).
 
-Access tokens last an hour and aren't refreshed silently (that would need a server or a pop-up on every expiry), so when one expires the app shows "Sign in again to sync"; tracking keeps working meanwhile.
+Access tokens last an hour and aren't refreshed silently (that would need a server), so when one expires the app shows "Sign in again to sync"; tracking keeps working meanwhile.
 
 How sync works is described in `docs/PLAN.md` section 4. The engine is `src/lib/sync/engine.ts` and is tested against an in-memory Drive.
 

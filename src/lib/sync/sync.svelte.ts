@@ -1,7 +1,7 @@
 // App-wide sync state: local-only or Google, status for Settings, and when to sync.
 import Dexie from 'dexie'
 import { db } from '../db'
-import { cachedToken, clearToken, fetchEmail, revoke, signIn, SignInCancelled } from './auth'
+import { cachedToken, clearToken, describeError, fetchEmail, revoke, startSignIn, type RedirectResult } from './auth'
 import { AuthError, GoogleDrive } from './drive'
 import { META_LAST, pendingCount, resetSyncState, syncOnce } from './engine'
 import { dropSyncedBlobs } from '../data/attachments'
@@ -36,12 +36,13 @@ class SyncState {
     return t
   })
 
-  async init() {
+  async init(redirect: RedirectResult = null) {
     const acct = (await db.meta.get(META_ACCOUNT))?.value as { mode: Mode; email?: string } | undefined
     this.mode = acct?.mode ?? null
     this.email = acct?.email ?? ''
     this.lastSync = ((await db.meta.get(META_LAST))?.value as number) ?? null
     this.pending = await pendingCount(db)
+    if (redirect) await this.finishSignIn(redirect)
     this.ready = true
 
     Dexie.on('storagemutated', (parts) => {
@@ -50,6 +51,8 @@ class SyncState {
       void pendingCount(db).then((n) => (this.pending = n))
       if (!this.running) this.schedule()
     })
+    // Back from Google's page without finishing: the page may be restored as it was.
+    addEventListener('pageshow', (e) => e.persisted && (this.busy = false))
     addEventListener('online', () => this.syncSoon(0))
     addEventListener('offline', () => this.mode === 'google' && (this.status = 'offline'))
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && this.syncSoon(0))
@@ -65,23 +68,29 @@ class SyncState {
     await this.saveAccount()
   }
 
-  /** Sign in (from a tap) and start syncing. Uploads whatever is already on this device. */
-  async connect() {
+  /** Sign in and start syncing. Leaves for Google's page; finishSignIn runs on return. */
+  connect() {
     this.busy = true
     this.error = ''
+    startSignIn('connect', this.email || undefined)
+  }
+
+  /** Back from Google: a connect uploads what is on this device; a re-auth just syncs. */
+  private async finishSignIn(r: NonNullable<RedirectResult>) {
+    if (!r.ok) {
+      this.error = describeError(r.error)
+      if (r.purpose === 'reauth') this.status = 'needs-auth'
+      return
+    }
     try {
-      const token = await signIn(this.email || undefined)
-      const email = await fetchEmail(token)
+      const email = await fetchEmail(r.token)
       if (this.email && email && email !== this.email) await resetSyncState(db) // different account
       this.email = email
       this.mode = 'google'
       await this.saveAccount()
       this.status = 'idle'
-      await this.syncNow()
     } catch (e) {
-      if (!(e instanceof SignInCancelled)) this.error = e instanceof Error ? e.message : String(e)
-    } finally {
-      this.busy = false
+      this.error = e instanceof Error ? e.message : String(e)
     }
   }
 
@@ -153,18 +162,10 @@ class SyncState {
     return this.running
   }
 
-  /** Banner action: a fresh token from a tap, then sync. */
-  async reauth() {
+  /** Banner action: a fresh token from Google, then sync on return. */
+  reauth() {
     this.busy = true
-    try {
-      await signIn(this.email || undefined)
-      this.status = 'idle'
-      await this.syncNow()
-    } catch (e) {
-      if (!(e instanceof SignInCancelled)) this.error = e instanceof Error ? e.message : String(e)
-    } finally {
-      this.busy = false
-    }
+    startSignIn('reauth', this.email || undefined)
   }
 
   /** Download an attachment's bytes from Drive and keep them locally. */

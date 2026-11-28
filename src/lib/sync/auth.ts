@@ -1,100 +1,90 @@
-// Google sign-in with Google Identity Services (token flow, browser only).
+// Google sign-in with a full-page OAuth redirect (implicit token flow), browser only.
+// A pop-up can't hand the token back from an installed Android app; a redirect can.
 // Scope: drive.appdata (Clocky's hidden folder) plus email for display.
 
 export const CLIENT_ID = '684415690748-5ebni3lctk6clghbunb4cs06m1ml0icm.apps.googleusercontent.com'
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email'
 const TOKEN_KEY = 'clocky.token'
+const PENDING_KEY = 'clocky.signin'
 
-interface TokenResponse {
-  access_token?: string
-  expires_in?: number
-  error?: string
+export type SignInPurpose = 'connect' | 'reauth'
+
+/** Where Google sends you back: the app's own URL. Must be an authorised redirect URI. */
+export function redirectUri(): string {
+  return `${location.origin}${import.meta.env.BASE_URL}`
 }
 
-interface TokenClient {
-  requestAccessToken(o?: { prompt?: string; login_hint?: string }): void
-}
-
-interface Gis {
-  accounts: {
-    oauth2: {
-      initTokenClient(c: {
-        client_id: string
-        scope: string
-        callback: (r: TokenResponse) => void
-        error_callback?: (e: { type: string }) => void
-      }): TokenClient
-      revoke(token: string, done?: () => void): void
-    }
-  }
-}
-
-declare global {
-  interface Window {
-    google?: Gis
-  }
-}
-
-let loading: Promise<Gis> | null = null
-
-function loadGis(): Promise<Gis> {
-  if (window.google?.accounts?.oauth2) return Promise.resolve(window.google)
-  loading ??= new Promise((resolve, reject) => {
-    const s = document.createElement('script')
-    s.src = 'https://accounts.google.com/gsi/client'
-    s.async = true
-    s.onload = () => (window.google ? resolve(window.google) : reject(new Error('Google sign-in failed to load')))
-    s.onerror = () => {
-      loading = null
-      reject(new Error("Couldn't reach Google. Check your connection."))
-    }
-    document.head.append(s)
-  })
-  return loading
-}
-
-export class SignInCancelled extends Error {}
-
-/** The cached token, if it has more than a minute left. Kept across reloads within its hour. */
-export function cachedToken(): string | null {
+function store(key: string, value: unknown) {
   try {
-    const t = JSON.parse(localStorage.getItem(TOKEN_KEY) ?? 'null') as { token: string; exp: number } | null
-    return t && t.exp - 60_000 > Date.now() ? t.token : null
-  } catch {
-    return null
-  }
-}
-
-export function clearToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_KEY)
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, JSON.stringify(value))
   } catch {
     /* storage blocked */
   }
 }
 
-/**
- * Ask Google for an access token. Opens Google's window, so call it from a tap.
- * `hint` skips the account chooser for a known account.
- */
-export async function signIn(hint?: string): Promise<string> {
-  const gis = await loadGis()
-  const r = await new Promise<TokenResponse>((resolve, reject) => {
-    const client = gis.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPE,
-      callback: resolve,
-      error_callback: (e) => reject(new SignInCancelled(e.type)),
-    })
-    client.requestAccessToken(hint ? { prompt: '', login_hint: hint } : { prompt: 'select_account' })
-  })
-  if (!r.access_token) throw new SignInCancelled(r.error ?? 'no token')
+function read<T>(key: string): T | null {
   try {
-    localStorage.setItem(TOKEN_KEY, JSON.stringify({ token: r.access_token, exp: Date.now() + (r.expires_in ?? 3600) * 1000 }))
+    return JSON.parse(localStorage.getItem(key) ?? 'null') as T | null
   } catch {
-    /* storage blocked: token lives for this call only */
+    return null
   }
-  return r.access_token
+}
+
+/** The cached token, if it has more than a minute left. Kept across reloads within its hour. */
+export function cachedToken(): string | null {
+  const t = read<{ token: string; exp: number }>(TOKEN_KEY)
+  return t && t.exp - 60_000 > Date.now() ? t.token : null
+}
+
+export function clearToken(): void {
+  store(TOKEN_KEY, null)
+}
+
+/** Leave for Google's sign-in page. The app loads again on return (see consumeRedirect). */
+export function startSignIn(purpose: SignInPurpose, hint?: string): void {
+  const state = crypto.randomUUID()
+  store(PENDING_KEY, { state, purpose, hash: location.hash, at: Date.now() })
+  const q = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: redirectUri(),
+    response_type: 'token',
+    scope: SCOPE,
+    include_granted_scopes: 'true',
+    state,
+  })
+  // A known account goes straight through; otherwise let the person pick one.
+  if (hint) q.set('login_hint', hint)
+  else q.set('prompt', 'select_account')
+  location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${q}`)
+}
+
+export type RedirectResult =
+  | { ok: true; purpose: SignInPurpose; token: string }
+  | { ok: false; purpose: SignInPurpose; error: string }
+  | null
+
+/**
+ * On startup, before the router reads the hash: take the token (or error) Google put in
+ * the URL fragment, check it answers our own request, and put the app's route back.
+ */
+export function consumeRedirect(): RedirectResult {
+  const frag = new URLSearchParams(location.hash.replace(/^#/, ''))
+  if (!frag.has('state') || !(frag.has('access_token') || frag.has('error'))) return null
+  const pending = read<{ state: string; purpose: SignInPurpose; hash: string; at: number }>(PENDING_KEY)
+  store(PENDING_KEY, null)
+  history.replaceState(null, '', location.pathname + location.search + (pending?.hash || '#/projects'))
+  if (!pending || pending.state !== frag.get('state') || Date.now() - pending.at > 15 * 60_000) {
+    return { ok: false, purpose: pending?.purpose ?? 'connect', error: 'Sign-in was interrupted. Please try again.' }
+  }
+  const error = frag.get('error')
+  if (error) return { ok: false, purpose: pending.purpose, error }
+  if (!frag.get('scope')?.includes('drive.appdata')) {
+    return { ok: false, purpose: pending.purpose, error: 'Clocky needs access to its Drive folder to sync. Please allow it when signing in.' }
+  }
+  const token = frag.get('access_token')!
+  store(TOKEN_KEY, { token, exp: Date.now() + Number(frag.get('expires_in') ?? 3600) * 1000 })
+  return { ok: true, purpose: pending.purpose, token }
 }
 
 export async function fetchEmail(token: string): Promise<string> {
@@ -106,5 +96,17 @@ export async function fetchEmail(token: string): Promise<string> {
 export async function revoke(): Promise<void> {
   const t = cachedToken()
   clearToken()
-  if (t && window.google) window.google.accounts.oauth2.revoke(t)
+  if (t) {
+    await fetch('https://oauth2.googleapis.com/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ token: t }),
+    }).catch(() => {})
+  }
+}
+
+/** Readable text for Google's error codes. */
+export function describeError(code: string): string {
+  if (code === 'access_denied') return 'Sign-in was cancelled.'
+  return code.includes(' ') ? code : `Google sign-in failed (${code}).`
 }
