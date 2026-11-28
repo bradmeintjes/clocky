@@ -3,13 +3,14 @@
 </script>
 
 <span class="logo">
-  <svg class="mark" viewBox="0 0 512 512" aria-hidden="true">
-    <rect width="512" height="512" rx="120" fill="#111111" />
-    <g transform="translate(256 256) scale(1.1) translate(-256 -256)">
-      <path d="M362 150a150 150 0 1 0 0 212" fill="none" stroke="#F2F0EB" stroke-width="56" stroke-linecap="round" />
-      <circle cx="256" cy="256" r="36" fill="#D9692B" />
-    </g>
-  </svg>
+  <span class="mark">
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <circle cx="24" cy="24" r="18" stroke="var(--accent-soft)" stroke-width="4.5" />
+      <circle cx="24" cy="24" r="18" stroke="var(--go)" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="90 23.1" transform="rotate(-80 24 24)" />
+      <circle cx="24" cy="24" r="10" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-dasharray="49 13.8" transform="rotate(-62 24 24)" />
+      <path d="M24 12.5v8" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" />
+    </svg>
+  </span>
   {#if label}Clocky{/if}
 </span>
 
@@ -25,8 +26,18 @@
   }
 
   .mark {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
     flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+  }
+
+  .mark svg {
+    width: 24px;
+    height: 24px;
   }
 </style>

@@ -123,7 +123,8 @@ function grid(days: string[], columns: Column[], entries: Entry[], keysOf: (e: E
       if (i !== undefined) row.cells[i] += w
     }
   }
-  const rows = [...byDay.values()]
+  // Only days with time: no blank rows in the preview or the files.
+  const rows = [...byDay.values()].filter((r) => r.total > 0)
   return {
     columns,
     days: rows,
