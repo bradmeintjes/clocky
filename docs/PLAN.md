@@ -9,7 +9,7 @@ This document is for review before any code is written. Items marked **Decision*
 **In scope**
 
 - One user, one device. Data is designed so a second device can be added later without a migration.
-- Sign in with Google only.
+- Sign-in is optional. Without it, Clocky runs in local-only mode: no login and no sync, with everything kept in the browser. Signing in, with Google only, turns on Drive sync.
 - Projects with a name, a color and an archived flag. Projects are set up before use.
 - Time entries against a project, with a free-text task, tags, a description, start and stop times and breaks.
 - A live timer (one at a time) with pause and resume for breaks, plus manual entries.
@@ -136,7 +136,7 @@ There is no separate `projectId` index because the compound `[projectId+start]` 
 ### Sign-in
 
 - Google Identity Services, token flow, running entirely in the browser. The only scope requested is `drive.appdata` (a hidden app folder in your Drive that only Clocky can see), plus your email for display.
-- You sign in once on first launch. After that the app works fully offline. Access tokens last an hour, and the app quietly asks for a fresh one when it next needs to sync and is online. If Google needs you to confirm, a "Sign in again to sync" banner appears; tracking keeps working meanwhile.
+- Sign-in is optional. On first launch you choose **Sign in with Google** or **Continue without signing in** (local-only mode: no login, no sync; data stays in this browser, and backup and restore still work). You can connect Google later from Settings, which uploads what you already have, or disconnect it, which stops syncing and keeps the local data. Once signed in, the app works fully offline. Access tokens last an hour, and the app quietly asks for a fresh one when it next needs to sync and is online. If Google needs you to confirm, a "Sign in again to sync" banner appears; tracking keeps working meanwhile.
 - **Setup you will need to do once:** create a Google Cloud project, turn on the Drive API, and create an OAuth web client ID with `https://bradmeintjes.github.io` as an allowed origin. I will write exact steps in the README. The app can stay in "Testing" mode with you as the only test user, so Google verification is not needed.
 
 ### What goes to Drive
@@ -224,7 +224,7 @@ Described in section 6.
 
 - Projects: create, rename, change color, archive or unarchive.
 - Tags: rename, merge two tags, delete.
-- Account, sync status, **Sync now**, Sign out.
+- Account: in local-only mode, **Connect Google Drive**. When connected: the account, sync status, **Sync now** and **Disconnect** (stops syncing and keeps local data).
 - Preferences: week start (default Monday) and the nudge threshold (default 8 hours).
 - Storage: space used, persistence status, and how long attachments stay on the device (default 3 months).
 - Backup and restore.
@@ -282,10 +282,10 @@ Each milestone ends with a pull request you can review, and the app deployed to 
 | M2 | Timer and entries | Start, pause, resume and stop a timer; see entries under date separators; add and edit manual entries with the manual flag. |
 | M3 | Export | Download the entries CSV or the Excel timesheet for any period. The app is useful for real work from here, local only. |
 | M4 | Attachments | Add links, files and photos to entries, stored locally. |
-| M5 | Google sign-in and sync | Sign in with Google; data and attachments sync to Drive; backup and restore. |
+| M5 | Google sign-in and sync | Optional sign-in with Google (local-only mode stays available); data and attachments sync to Drive; backup and restore. |
 | M6 | Polish | Long-running timer nudge and notification, storage settings, offline and install checks, accessibility pass. |
 
-Export comes before sync because it is the main pain point, and it lets you start using Clocky locally while sync is being built. Sign-in arrives in M5, so until then the app opens without a login.
+Export comes before sync because it is the main pain point, and it lets you start using Clocky locally while sync is being built. Sign-in arrives in M5 and stays optional, so the app keeps opening without a login in local-only mode.
 
 ## 8. Decisions from review
 

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { remove } from './actions'
   import { db } from './db'
+  import Attachments, { type Pending } from './Attachments.svelte'
+  import { addFile, addLink } from './data/attachments'
   import { addManualEntry, updateEntry } from './data/entries'
   import { ValidationError } from './data/projects'
   import { fromFields, toFields, type TimeFields } from './entry-form'
@@ -24,6 +26,7 @@
   let error = $state('')
   let busy = $state(false)
   let loaded = $state(false)
+  let pending = $state<Pending[]>([])
 
   const mode = $derived(ui.editorMode)
   const running = $derived(original?.end === null)
@@ -36,6 +39,7 @@
       return
     }
     error = ''
+    pending = []
     const id = ui.editorEntryId
     if (id) {
       db.entries.get(id).then((e) => {
@@ -114,7 +118,11 @@
       const t = resolveTimes()
       if (mode === 'new') {
         if (t.end === null) throw new ValidationError('Enter an end time.')
-        await addManualEntry({ projectId, task, description, tagIds, start: t.start, end: t.end, breaks: t.breaks, tz })
+        const e = await addManualEntry({ projectId, task, description, tagIds, start: t.start, end: t.end, breaks: t.breaks, tz })
+        for (const p of pending) {
+          if (p.kind === 'link') await addLink(e.id, p.url)
+          else await addFile(e.id, p)
+        }
       } else if (original) {
         const changes = { projectId, task, description, tagIds, ...(timesEdited ? t : {}) }
         await updateEntry(original.id, changes)
@@ -204,6 +212,10 @@
   </div>
 {/snippet}
 
+{#snippet attachments()}
+  <Attachments entryId={mode === 'new' ? null : (original?.id ?? null)} bind:pending />
+{/snippet}
+
 {#snippet descField(autofocus: boolean)}
   <div class="field">
     <label for="ed-desc">Description</label>
@@ -226,6 +238,7 @@
           </span>
         </div>
         {@render descField(true)}
+        {@render attachments()}
         <details class="more">
           <summary><Icon name="chev" /> Task, tags and times</summary>
           <div class="stack">
@@ -237,6 +250,7 @@
         {@render coreFields()}
         {@render timeFields()}
         {@render descField(false)}
+        {@render attachments()}
       {/if}
       {#if error}<p class="error" role="alert">{error}</p>{/if}
     </form>

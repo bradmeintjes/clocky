@@ -23,6 +23,9 @@
         {@const t = tagsById.get(id)}
         {#if t}<span class="chip">{t.name}</span>{/if}
       {/each}
+      {#if e.attachmentIds.length}
+        <span class="it" title="Attachments"><Icon name="clip" />{e.attachmentIds.length}</span>
+      {/if}
       {#if e.manual}<span class="badge-manual" title="Added by hand or times edited">Manual</span>{/if}
       {#if live}<span class="badge-live"><span class="pulse"></span>Live</span>{/if}
     </span>
