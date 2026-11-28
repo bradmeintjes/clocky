@@ -1,3 +1,5 @@
+// Must run first: takes Google's sign-in result out of the URL before the router reads it.
+import { redirectResult } from './lib/sync/redirect'
 import { mount } from 'svelte'
 import { registerSW } from 'virtual:pwa-register'
 import './app.css'
@@ -22,5 +24,5 @@ dark.addEventListener('change', syncThemeColor)
 // Preferences first (week start shapes the first screen), then the app and sync.
 export default prefs.load().then(() => {
   mount(App, { target: document.getElementById('app')! })
-  void sync.init()
+  void sync.init(redirectResult)
 })

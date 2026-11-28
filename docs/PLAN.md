@@ -135,7 +135,7 @@ There is no separate `projectId` index because the compound `[projectId+start]` 
 
 ### Sign-in
 
-- Google Identity Services, token flow, running entirely in the browser. The only scope requested is `drive.appdata` (a hidden app folder in your Drive that only Clocky can see), plus your email for display.
+- OAuth implicit token flow with a full-page redirect to Google and back to the app's URL, running entirely in the browser (a pop-up can't return the token to an installed Android app). The only scope requested is `drive.appdata` (a hidden app folder in your Drive that only Clocky can see), plus your email for display.
 - Sign-in is optional. On first launch you choose **Sign in with Google** or **Continue without signing in** (local-only mode: no login, no sync; data stays in this browser, and backup and restore still work). You can connect Google later from Settings, which uploads what you already have, or disconnect it, which stops syncing and keeps the local data. Once signed in, the app works fully offline. Access tokens last an hour, and the app quietly asks for a fresh one when it next needs to sync and is online. If Google needs you to confirm, a "Sign in again to sync" banner appears; tracking keeps working meanwhile.
 - **Setup you will need to do once:** create a Google Cloud project, turn on the Drive API, and create an OAuth web client ID with `https://bradmeintjes.github.io` as an allowed origin. I will write exact steps in the README. The app can stay in "Testing" mode with you as the only test user, so Google verification is not needed.
 
