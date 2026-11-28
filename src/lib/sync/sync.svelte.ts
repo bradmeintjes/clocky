@@ -4,6 +4,8 @@ import { db } from '../db'
 import { cachedToken, clearToken, fetchEmail, revoke, signIn, SignInCancelled } from './auth'
 import { AuthError, GoogleDrive } from './drive'
 import { META_LAST, pendingCount, resetSyncState, syncOnce } from './engine'
+import { dropSyncedBlobs } from '../data/attachments'
+import { prefs } from '../settings.svelte'
 
 export type Mode = 'local' | 'google'
 type Status = 'idle' | 'syncing' | 'error' | 'needs-auth' | 'offline'
@@ -132,6 +134,7 @@ class SyncState {
         } while (this.again)
         this.lastSync = Date.now()
         this.status = 'idle'
+        await dropSyncedBlobs(prefs.value.keepMonths).catch(() => 0)
       } catch (e) {
         if (e instanceof NeedsAuth || e instanceof AuthError) {
           clearToken()

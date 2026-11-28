@@ -6,7 +6,7 @@
   import Swatch from '../lib/ui/Swatch.svelte'
   import Switch from '../lib/ui/Switch.svelte'
   import { entriesBetween, projects, running } from '../lib/queries'
-  import { weekStartDay } from '../lib/settings'
+  import { weekStartDay } from '../lib/settings.svelte'
   import { addDays, formatHM, HOUR, startOfWeek, workedMs } from '../lib/time'
   import { ui } from '../lib/ui-state.svelte'
 

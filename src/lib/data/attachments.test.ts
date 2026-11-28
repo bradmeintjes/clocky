@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ClockyDB } from '../db'
 import { ulid } from '../ulid'
-import { addFile, addLink, getBlob, linkName, listAttachments, MAX_FILE_BYTES, normaliseUrl, removeAttachment, restoreAttachment } from './attachments'
+import { addFile, addLink, dropSyncedBlobs, getBlob, linkName, listAttachments, MAX_FILE_BYTES, normaliseUrl, removeAttachment, restoreAttachment } from './attachments'
 import { addManualEntry, deleteEntry } from './entries'
 
 let db: ClockyDB
@@ -68,5 +68,20 @@ describe('files', () => {
   it('refuses to attach to a deleted entry', async () => {
     await deleteEntry(entryId, db)
     await expect(addLink(entryId, 'x.com', db)).rejects.toThrow()
+  })
+})
+
+describe('storage', () => {
+  it('drops bytes only for old entries already on Drive', async () => {
+    const a = await addFile(entryId, { file: new Blob(['x']), name: 'a.bin', kind: 'file' }, db)
+    const b = await addFile(entryId, { file: new Blob(['y']), name: 'b.bin', kind: 'file' }, db)
+    await db.attachments.update(a.id, { driveFileId: 'd1' })
+    const fourMonths = T + 122 * 86400e3
+    expect(await dropSyncedBlobs(3, T + 86400e3, db)).toBe(0) // entry too recent
+    expect(await dropSyncedBlobs(0, fourMonths, db)).toBe(0) // keep forever
+    expect(await dropSyncedBlobs(3, fourMonths, db)).toBe(1)
+    expect(await getBlob(a.id, db)).toBeUndefined()
+    expect(await getBlob(b.id, db)).toBeDefined() // not on Drive yet
+    expect((await db.attachments.get(a.id))?.name).toBe('a.bin')
   })
 })

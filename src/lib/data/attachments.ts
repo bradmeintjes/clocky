@@ -109,3 +109,23 @@ export function formatSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   return `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
+
+/**
+ * Free space: drop the bytes of attachments on entries older than `keepMonths`, but only
+ * once they are safely on Drive. The record and thumbnail stay; opening downloads again.
+ */
+export async function dropSyncedBlobs(keepMonths: number, now = Date.now(), db: ClockyDB = defaultDb): Promise<number> {
+  if (keepMonths <= 0) return 0
+  const cutoff = new Date(now)
+  cutoff.setMonth(cutoff.getMonth() - keepMonths)
+  const onDrive = (await db.attachments.toArray()).filter((a) => a.driveFileId && a.kind !== 'link')
+  let n = 0
+  for (const a of onDrive) {
+    const e = await db.entries.get(a.entryId)
+    if (e && e.start < cutoff.getTime() && (await db.blobs.get(a.id))) {
+      await db.blobs.delete(a.id)
+      n++
+    }
+  }
+  return n
+}

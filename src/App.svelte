@@ -8,6 +8,7 @@
   import TimerBar from './lib/TimerBar.svelte'
   import Toast from './lib/Toast.svelte'
   import Welcome from './lib/Welcome.svelte'
+  import Nudge from './lib/Nudge.svelte'
   import { sync } from './lib/sync/sync.svelte'
   import { ui } from './lib/ui-state.svelte'
   import Project from './screens/Project.svelte'
@@ -86,6 +87,7 @@
   <StartSheet />
   <EntryEditor />
   <Toast />
+  <Nudge />
   {#if sync.ready && sync.mode === null}<Welcome />{/if}
 
   <nav class="tabs" aria-label="Main">

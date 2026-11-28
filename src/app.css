@@ -32,13 +32,13 @@
   --ink-2: #475569;
   --ink-3: #64748b;
   --line: #e2e8f0;
-  --accent: #0d9488; /* teal: main accent */
+  --accent: #0f766e; /* teal: main accent (teal-700; #0D9488 is under 4.5:1 with white text) */
   --accent-ink: #ffffff;
   --accent-soft: #ddf3f0;
   --go: #84cc16; /* lime: Start buttons only */
   --go-ink: #1e293b;
   --go-soft: #ecf8d6;
-  --live: #059669; /* emerald: running */
+  --live: #047857; /* emerald: running (emerald-700 for text contrast) */
   --live-soft: #d9f5ea;
   --pause: #b87400; /* breaks */
   --pause-soft: #fbefd6;
@@ -438,4 +438,42 @@ svg.i {
   50% {
     opacity: 0.35;
   }
+}
+
+/* Centered dialogs (Bits UI Dialog) */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(10 12 18 / 0.45);
+}
+
+.dialog {
+  position: fixed;
+  z-index: 41;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+  border-radius: 22px;
+}
+
+.dialog-title {
+  font-family: var(--f-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.dialog [data-dialog-description] {
+  margin: 0;
+}
+
+.dialog-close {
+  align-self: flex-end;
 }

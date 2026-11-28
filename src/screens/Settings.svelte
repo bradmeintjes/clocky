@@ -13,6 +13,8 @@
   import { ValidationError } from '../lib/data/projects'
   import { saveBlob } from '../lib/export/download'
   import { ui } from '../lib/ui-state.svelte'
+  import { prefs } from '../lib/settings.svelte'
+  import Switch from '../lib/ui/Switch.svelte'
 
   let projectOpen = $state(false)
   let editProject = $state<Project | null>(null)
@@ -59,6 +61,25 @@
     const day = new Date().toISOString().slice(0, 10)
     saveBlob(new Blob([JSON.stringify(b)], { type: 'application/json' }), `clocky-backup-${day}.json`)
   }
+
+  const notifySupported = typeof Notification !== 'undefined'
+  let notify = $state(prefs.value.notify && notifySupported && Notification.permission === 'granted')
+  let notifyNote = $state('')
+  $effect(() => {
+    if (notify === prefs.value.notify) return
+    if (!notify) {
+      void prefs.set({ notify: false })
+      return
+    }
+    notifyNote = ''
+    Notification.requestPermission().then((p) => {
+      if (p === 'granted') void prefs.set({ notify: true })
+      else {
+        notify = false
+        notifyNote = 'Notifications are blocked for Clocky. Allow them in your browser settings to use this.'
+      }
+    })
+  })
 
   let restoreError = $state('')
   async function restore(ev: Event) {
@@ -178,8 +199,58 @@
 </div>
 
 <div class="section">
+  <h3>Preferences</h3>
+  <div class="group">
+    <div class="srow">
+      <label class="grow t" for="pf-week">Week starts on</label>
+      <select id="pf-week" class="input compact" value={prefs.value.weekStart} onchange={(e) => prefs.set({ weekStart: Number(e.currentTarget.value) })}>
+        <option value={1}>Monday</option>
+        <option value={0}>Sunday</option>
+        <option value={6}>Saturday</option>
+      </select>
+    </div>
+    <div class="srow">
+      <div class="grow">
+        <label class="t" for="pf-nudge">Ask if still working after</label>
+        <div class="d">Measured from when you last started or resumed.</div>
+      </div>
+      <select id="pf-nudge" class="input compact" value={prefs.value.nudgeHours} onchange={(e) => prefs.set({ nudgeHours: Number(e.currentTarget.value) })}>
+        {#each [2, 4, 6, 8, 10, 12] as h (h)}<option value={h}>{h} hours</option>{/each}
+      </select>
+    </div>
+    {#if notifySupported}
+      <div class="srow">
+        <div class="grow">
+          <div class="t">Notify me too</div>
+          <div class="d">A system notification while Clocky is open or in the background.</div>
+        </div>
+        <Switch bind:checked={notify} label="Notify me when a timer runs long" />
+      </div>
+    {/if}
+  </div>
+  {#if notifyNote}<p class="small muted">{notifyNote}</p>{/if}
+</div>
+
+<div class="section">
   <h3>Storage</h3>
   <div class="group">
+    <div class="srow">
+      <div class="grow">
+        <label class="t" for="pf-keep">Keep attachment files on this device</label>
+        <div class="d">
+          {sync.mode === 'google'
+            ? 'Older files are removed from this device once they are on Drive, and download again when you open them.'
+            : 'While local only, files always stay on this device.'}
+        </div>
+      </div>
+      <select id="pf-keep" class="input compact" value={prefs.value.keepMonths} onchange={(e) => prefs.set({ keepMonths: Number(e.currentTarget.value) })}>
+        <option value={1}>1 month</option>
+        <option value={3}>3 months</option>
+        <option value={6}>6 months</option>
+        <option value={12}>12 months</option>
+        <option value={0}>Forever</option>
+      </select>
+    </div>
     <div class="srow">
       <div class="grow"><div class="t">Space used</div></div>
       <span class="mono">{usage ?? 'Unknown'}</span>
@@ -240,6 +311,13 @@
 <TagSheet bind:open={tagOpen} tag={editTag} tags={$tags ?? []} usage={editTag ? count(editTag.id) : 0} />
 
 <style>
+  .compact {
+    width: auto;
+    height: 36px;
+    padding: 0 8px;
+    flex: none;
+  }
+
   .avatar {
     width: 40px;
     height: 40px;
@@ -297,40 +375,4 @@
     color: var(--ink-3);
   }
 
-  :global(.scrim) {
-    position: fixed;
-    inset: 0;
-    z-index: 40;
-    background: rgb(10 12 18 / 0.45);
-  }
-
-  :global(.dialog) {
-    position: fixed;
-    z-index: 41;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: min(420px, calc(100vw - 32px));
-    padding: 22px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    background: var(--surface);
-    border-radius: 22px;
-  }
-
-  :global(.dialog-title) {
-    font-family: var(--f-display);
-    font-size: 1.15rem;
-    font-weight: 700;
-    margin: 0;
-  }
-
-  :global(.dialog [data-dialog-description]) {
-    margin: 0;
-  }
-
-  :global(.dialog-close) {
-    align-self: flex-end;
-  }
 </style>

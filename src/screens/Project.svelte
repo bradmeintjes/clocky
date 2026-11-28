@@ -8,7 +8,7 @@
   import Icon from '../lib/Icon.svelte'
   import ProjectSheet from '../lib/ProjectSheet.svelte'
   import { projectEntries, running, tags } from '../lib/queries'
-  import { weekStartDay } from '../lib/settings'
+  import { weekStartDay } from '../lib/settings.svelte'
   import { formatHM, formatHMS, startOfMonth, startOfWeek, workedMs } from '../lib/time'
   import type { Entry } from '../lib/types'
   import Swatch from '../lib/ui/Swatch.svelte'
