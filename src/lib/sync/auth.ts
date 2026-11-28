@@ -7,7 +7,11 @@ const SCOPE = 'https://www.googleapis.com/auth/drive.appdata https://www.googlea
 const TOKEN_KEY = 'clocky.token'
 const PENDING_KEY = 'clocky.signin'
 
-export type SignInPurpose = 'connect' | 'reauth'
+const SILENT_KEY = 'clocky.silent'
+const SILENT_RETRY = 10 * 60_000
+
+/** connect/reauth show Google's page; silent renews an expired token without it (prompt=none). */
+export type SignInPurpose = 'connect' | 'reauth' | 'silent'
 
 /** Where Google sends you back: the app's own URL. Must be an authorised redirect URI. */
 export function redirectUri(): string {
@@ -55,8 +59,20 @@ export function startSignIn(purpose: SignInPurpose, hint?: string): void {
   })
   // A known account goes straight through; otherwise let the person pick one.
   if (hint) q.set('login_hint', hint)
-  else q.set('prompt', 'select_account')
+  if (purpose === 'silent') {
+    q.set('prompt', 'none')
+    store(SILENT_KEY, Date.now())
+  } else if (!hint) q.set('prompt', 'select_account')
   location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${q}`)
+}
+
+/**
+ * Whether to try a silent renewal now: online, and no silent attempt in the last ten
+ * minutes (if Google needs the person, it answers with an error and we must not loop).
+ */
+export function silentAllowed(): boolean {
+  const last = read<number>(SILENT_KEY) ?? 0
+  return navigator.onLine && Date.now() - last > SILENT_RETRY
 }
 
 export type RedirectResult =

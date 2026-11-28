@@ -37,7 +37,7 @@ One-time Google Cloud setup (already done for this deployment):
 2. OAuth consent screen: External, Testing mode, add yourself as a test user. Scopes: `.../auth/drive.appdata` and `.../auth/userinfo.email`.
 3. Credentials, Create OAuth client ID, type **Web application**. Authorised JavaScript origins: `https://bradmeintjes.github.io` and `http://localhost:5173`. Authorised redirect URIs: `https://bradmeintjes.github.io/clocky/` and `http://localhost:5173/clocky/` (the app's own URL, with the trailing slash).
 
-Access tokens last an hour and aren't refreshed silently (that would need a server), so when one expires the app shows "Sign in again to sync"; tracking keeps working meanwhile.
+Access tokens last an hour. When one has expired, opening the app (or coming back to it) renews it with a quick silent redirect to Google (`prompt=none`), so there is no prompt while you are still signed in to Google. Only if Google needs you (signed out, consent withdrawn) does the app show "Sign in again to sync"; tracking keeps working meanwhile, and the silent attempt is not repeated for ten minutes.
 
 How sync works is described in `docs/PLAN.md` section 4. The engine is `src/lib/sync/engine.ts` and is tested against an in-memory Drive.
 
