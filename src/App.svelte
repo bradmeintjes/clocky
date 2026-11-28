@@ -7,6 +7,8 @@
   import StartSheet from './lib/StartSheet.svelte'
   import TimerBar from './lib/TimerBar.svelte'
   import Toast from './lib/Toast.svelte'
+  import Welcome from './lib/Welcome.svelte'
+  import { sync } from './lib/sync/sync.svelte'
   import { ui } from './lib/ui-state.svelte'
   import Project from './screens/Project.svelte'
   import Projects from './screens/Projects.svelte'
@@ -61,6 +63,13 @@
 
   <main class="main">
     <div class="inner">
+      {#if sync.mode === 'google' && sync.status === 'needs-auth'}
+        <div class="notice authbanner" role="status">
+          <Icon name="cloud" />
+          <span class="grow">Sign in again to sync. Tracking keeps working meanwhile.</span>
+          <button class="btn sm primary" onclick={() => sync.reauth()} disabled={sync.busy}>Sign in</button>
+        </div>
+      {/if}
       <TimerBar />
       {#if route.name === 'project'}
         {#key route.id}<Project id={route.id} />{/key}
@@ -77,6 +86,7 @@
   <StartSheet />
   <EntryEditor />
   <Toast />
+  {#if sync.ready && sync.mode === null}<Welcome />{/if}
 
   <nav class="tabs" aria-label="Main">
     {#each tabs as tab (tab.name)}
@@ -88,6 +98,21 @@
 </div>
 
 <style>
+  .authbanner {
+    align-items: center;
+    margin-top: 12px;
+    background: var(--accent-soft);
+  }
+
+  .authbanner :global(svg) {
+    color: var(--accent);
+  }
+
+  .authbanner .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
   .app {
     min-height: 100dvh;
   }
