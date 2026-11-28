@@ -46,9 +46,6 @@
   }
 
   .tb {
-    --tb-bg: #141821;
-    --tb-fg: #f3f4f7;
-    --tb-muted: #9aa1b1;
     position: relative;
     overflow: hidden;
     max-width: 700px;
@@ -61,12 +58,6 @@
     background: var(--tb-bg);
     color: var(--tb-fg);
     box-shadow: var(--shadow);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .tb {
-      --tb-bg: #262b36;
-    }
   }
 
   .tb::before {
@@ -135,6 +126,7 @@
   .clock {
     font-size: 1.35rem;
     font-weight: 700;
+    color: var(--tb-clock);
   }
 
   .tbtn {

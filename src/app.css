@@ -25,23 +25,30 @@
 
 :root {
   color-scheme: light;
-  --bg: #f3f4f7;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #eceef3;
-  --ink: #141821;
-  --ink-2: #4a5262;
-  --ink-3: #7b8293;
-  --line: #dee1e8;
-  --accent: #2b4ee0;
+  --surface-2: #eef2f6;
+  --ink: #1e293b;
+  --ink-2: #475569;
+  --ink-3: #64748b;
+  --line: #e2e8f0;
+  --accent: #0d9488; /* teal: main accent */
   --accent-ink: #ffffff;
-  --accent-soft: #e5eafd;
-  --live: #0c9466; /* running timer */
-  --live-soft: #dcf4ea;
+  --accent-soft: #ddf3f0;
+  --go: #84cc16; /* lime: Start buttons only */
+  --go-ink: #1e293b;
+  --go-soft: #ecf8d6;
+  --live: #059669; /* emerald: running */
+  --live-soft: #d9f5ea;
   --pause: #b87400; /* breaks */
   --pause-soft: #fbefd6;
   --danger: #c8372d;
   --danger-soft: #fbe7e5;
-  --shadow: 0 10px 30px rgb(20 24 33 / 0.16);
+  --tb-bg: #1e293b; /* timer bar */
+  --tb-fg: #f8fafc;
+  --tb-muted: #94a3b8;
+  --tb-clock: #2dd4bf;
+  --shadow: 0 10px 30px rgb(30 41 59 / 0.18);
 
   --f-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
   --f-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -51,29 +58,36 @@
   --r-m: 12px;
   --r-l: 18px;
   --tabs-h: 64px;
-  --statusbar-bg: #141821; /* iOS installed app, light theme: dark band behind white status text */
+  --statusbar-bg: #1e293b; /* iOS installed app, light theme: dark band behind white status text */
   --sidebar-w: 248px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --bg: #0e1015;
-    --surface: #171a21;
-    --surface-2: #20242d;
-    --ink: #eceef3;
-    --ink-2: #b2b8c5;
-    --ink-3: #7f8697;
-    --line: #2a2f3a;
-    --accent: #7189ff;
-    --accent-ink: #0a0e1e;
-    --accent-soft: #1d2645;
-    --live: #3ad29c;
-    --live-soft: #103026;
+    --bg: #0b112a;
+    --surface: #141c33;
+    --surface-2: #1e293b;
+    --ink: #f1f5f9;
+    --ink-2: #cbd5e1;
+    --ink-3: #8a97ad;
+    --line: #26324a;
+    --accent: #14b8a6;
+    --accent-ink: #0b112a;
+    --accent-soft: #0e3a3d;
+    --go: #a3e635;
+    --go-ink: #0b112a;
+    --go-soft: #24361a;
+    --live: #10b981;
+    --live-soft: #0b3a2e;
     --pause: #f0b642;
     --pause-soft: #382b10;
     --danger: #f07a70;
     --danger-soft: #3a1715;
+    --tb-bg: #1e293b;
+    --tb-fg: #f1f5f9;
+    --tb-muted: #94a3b8;
+    --tb-clock: #14b8a6;
     --shadow: 0 10px 30px rgb(0 0 0 / 0.5);
     --statusbar-bg: transparent;
   }
@@ -264,6 +278,11 @@ svg.i {
   padding: 0 12px;
   font-size: 0.8125rem;
   border-radius: 10px;
+}
+
+.btn.go {
+  background: var(--go);
+  color: var(--go-ink);
 }
 
 .btn.ghost {

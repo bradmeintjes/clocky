@@ -88,7 +88,7 @@
         <button class="rbtn stop" aria-label="Stop timer" onclick={stop}><Icon name="stop" /></button>
       </div>
     {:else}
-      <button class="btn primary big block" onclick={() => ui.openStart(p.id)}><Icon name="play" /> Start timer</button>
+      <button class="btn go big block" onclick={() => ui.openStart(p.id)}><Icon name="play" /> Start timer</button>
     {/if}
   </div>
 
