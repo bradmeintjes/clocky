@@ -39,6 +39,11 @@
      light theme the area behind it gets a dark band to keep the clock readable. -->
 <div class="statusbar" aria-hidden="true"></div>
 
+<!-- Nothing renders until we know whether to show the first-launch choice, so the
+     app's header never flashes behind it. -->
+{#if sync.ready && sync.mode === null}
+  <Welcome />
+{:else if sync.ready}
 <div class="app">
   <aside class="side">
     <div class="side-logo"><Logo /></div>
@@ -88,7 +93,6 @@
   <EntryEditor />
   <Toast />
   <Nudge />
-  {#if sync.ready && sync.mode === null}<Welcome />{/if}
 
   <nav class="tabs" aria-label="Main">
     {#each tabs as tab (tab.name)}
@@ -98,6 +102,7 @@
     {/each}
   </nav>
 </div>
+{/if}
 
 <style>
   .authbanner {
