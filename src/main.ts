@@ -13,7 +13,7 @@ void requestPersistence()
 // System bar colour follows the app's light/dark background.
 const dark = matchMedia('(prefers-color-scheme: dark)')
 const syncThemeColor = () =>
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark.matches ? '#0e1015' : '#f3f4f7')
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark.matches ? '#0b112a' : '#f8fafc')
 syncThemeColor()
 dark.addEventListener('change', syncThemeColor)
 

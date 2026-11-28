@@ -256,8 +256,8 @@
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--go);
+    color: var(--go-ink);
   }
 
   .startbtn.on {

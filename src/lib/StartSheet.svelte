@@ -59,7 +59,7 @@
     <p class="small muted">You can fill in everything later, including a description.</p>
   </form>
   {#snippet footer()}
-    <button class="btn primary big" type="submit" form="start-form" disabled={!projectId || busy}>
+    <button class="btn go big" type="submit" form="start-form" disabled={!projectId || busy}>
       <Icon name="play" />
       {run ? 'Stop current and start' : 'Start'}
     </button>
