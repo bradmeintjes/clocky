@@ -15,6 +15,7 @@
   import { ValidationError } from './data/projects'
   import { saveBlob } from './export/download'
   import Icon from './Icon.svelte'
+  import { sync } from './sync/sync.svelte'
   import { makeThumb } from './thumb'
   import type { Attachment } from './types'
   import { ui } from './ui-state.svelte'
@@ -140,7 +141,11 @@
   let viewerBlob: Blob | undefined
 
   async function blobOf(it: Item): Promise<Blob | undefined> {
-    if (it.att) return getBlob(it.att.id)
+    if (it.att) {
+      const local = await getBlob(it.att.id)
+      if (local || !it.att.driveFileId) return local
+      return sync.fetchBlob(it.att.id, it.att.driveFileId).catch(() => undefined)
+    }
     const p = it.index !== undefined ? pending[it.index] : undefined
     return p && p.kind !== 'link' ? p.file : undefined
   }
@@ -148,7 +153,7 @@
   async function open(it: Item) {
     const blob = await blobOf(it)
     if (!blob) {
-      ui.showToast("This file isn't on this device")
+      ui.showToast(sync.mode === 'google' ? "Couldn't download this file from Drive" : "This file isn't on this device")
       return
     }
     if (it.kind === 'photo') {
