@@ -5,7 +5,7 @@ import { HOUR, MIN, workedMs } from '../time'
 import { ulid } from '../ulid'
 import {
   addManualEntry, deleteEntry, getRunning, isPaused, lastResume, pauseTimer, restoreEntry,
-  resumeTimer, startTimer, stopTimer, updateEntry, validateTimes,
+  resumeTimer, startTimer, stopTimer, stopTimerAt, updateEntry, validateTimes,
 } from './entries'
 
 let db: ClockyDB
@@ -103,5 +103,19 @@ describe('manual entries and edits', () => {
     expect((await db.entries.get(e.id))!.deleted).toBe(1)
     await restoreEntry(e.id, db)
     expect((await db.entries.get(e.id))!.deleted).toBeUndefined()
+  })
+})
+
+describe('stopTimerAt', () => {
+  it('stops at an earlier time and flags manual', async () => {
+    await startTimer({ projectId: 'p' }, T, db)
+    await pauseTimer(T + HOUR, db)
+    await resumeTimer(T + 2 * HOUR, db)
+    await expect(stopTimerAt(T + 90 * MIN, T + 12 * HOUR, db)).rejects.toThrow('after you last started or resumed')
+    await expect(stopTimerAt(T + 13 * HOUR, T + 12 * HOUR, db)).rejects.toThrow('future')
+    const e = await stopTimerAt(T + 10 * HOUR, T + 12 * HOUR, db)
+    expect(e).toMatchObject({ end: T + 10 * HOUR, manual: 1 })
+    expect(workedMs(e!)).toBe(9 * HOUR)
+    expect(await getRunning(db)).toBeUndefined()
   })
 })

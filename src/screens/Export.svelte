@@ -6,7 +6,7 @@
   import Switch from '../lib/ui/Switch.svelte'
   import Swatch from '../lib/ui/Swatch.svelte'
   import { projects, tags } from '../lib/queries'
-  import { weekStartDay } from '../lib/settings'
+  import { weekStartDay } from '../lib/settings.svelte'
   import { DAY, formatHM } from '../lib/time'
   import { periodFor, type PeriodKind } from '../lib/export/period'
   import { buildTimesheet } from '../lib/export/timesheet'

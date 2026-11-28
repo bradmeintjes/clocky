@@ -101,6 +101,18 @@ export function stopTimer(now = Date.now(), db: ClockyDB = defaultDb) {
   return withRunning(db, (e) => closeOut(e, now))
 }
 
+/**
+ * Stop the running timer at an earlier time, from the long-timer prompt.
+ * Counts as a timestamp edit, so the entry is flagged manual.
+ */
+export function stopTimerAt(end: number, now = Date.now(), db: ClockyDB = defaultDb) {
+  return withRunning(db, (e) => {
+    if (end > now) throw new ValidationError("The end time can't be in the future.")
+    if (end <= lastResume(e)) throw new ValidationError('The end time must be after you last started or resumed.')
+    return { ...closeOut(e, end), manual: 1 as const, updatedAt: now }
+  })
+}
+
 /** Check start, end and breaks make sense. Throws ValidationError with a readable message. */
 export function validateTimes(start: number, end: number | null, breaks: Break[], now = Date.now()): void {
   if (!Number.isFinite(start)) throw new ValidationError('Enter a valid start time.')
